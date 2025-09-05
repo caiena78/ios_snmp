@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   license: MIT
-  min_ansible_version: "1.00"
+  min_ansible_version: "2.10"
   role_name: ios_snmp
   author: Chad Aiena
   description: Ansible Role adds snmpv3 to a Cisco IOS/IOS-XE device
