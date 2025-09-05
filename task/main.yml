@@ -1,0 +1,88 @@
+---  
+
+    - name: Include netbox_getsite
+      include_role:
+        name: netbox_getsite
+        #netbox_site_response
+
+
+
+    - name: Set SNMP location
+      set_fact:
+        SNMP_LOCATION: "{{ netbox_site_response.json.custom_fields.SNMP_LOCATION}}"
+      when:
+        - netbox_site_response.json is defined
+        - netbox_site_response.json | length > 0
+        - netbox_site_response.json.custom_fields is defined
+        - netbox_site_response.json.custom_fields.SNMP_LOCATION is defined # Ensure the 'syslog' custom field exists
+        - netbox_site_response.json.custom_fields.SNMP_LOCATION | length > 0 # Ensure the 'syslog' list is not empty
+        - netbox_site_response.json.custom_fields.SNMP_LOCATION is defined # Ensure the 'ip' key exists in the first element
+
+    - name: Get IPs tagged with snmp_acl_allow from NetBox
+      uri:
+        url: "{{ netbox_url }}/api/ipam/ip-addresses/?tag={{ snmp_acl_tag }}"
+        method: GET
+        headers:
+          Authorization: "Token {{ netbox_token }}"
+          Accept: "application/json"
+        return_content: yes
+      register: netbox_response
+
+    - name: netbox response
+      debug:
+        var: netbox_response
+
+
+    - name: Extract and format ACL lines
+      set_fact:
+        acl_lines: >-
+          {{
+            netbox_response.json.results
+            | map(attribute='address')
+            | map('split', '/')         
+            | map('first')              
+            | zip(range(10, (netbox_response.json.results | length * 10) + 1, 10))
+            | map('reverse')           
+            | map('join', ' permit ')  
+            | list
+          }}
+
+
+
+    - name: Debug formatted ACL lines
+      debug:
+        var: acl_lines
+
+
+    - name: Create/Update ACL for SNMP
+      ios_config:
+        lines: "{{ acl_lines }}"
+        parents: ['ip access-list standard {{ snmp_acl_name }}']
+        before:
+          - no ip access-list standard {{ snmp_acl_name }}
+        match: strict
+        replace: block
+    
+    
+    - name: SNMP Config
+      ios_config:      
+        lines:
+        - snmp-server location {{ SNMP_LOCATION }}
+        - snmp-server view {{ snmp_rw_view  }} internet included
+        - snmp-server group {{ snmp_rw_group  }} v3 priv read {{ snmp_rw_view  }} write {{ snmp_rw_view  }} access {{ snmp_acl_name }}
+        - snmp-server user {{  snmp_rw_user  }} {{ snmp_rw_group  }} v3 auth sha {{ snmp_auth_passphrase_rw }} priv aes 128 {{ snmp_priv_passphrase_rw }} access {{ snmp_acl_name }}
+        - snmp-server group {{ snmp_rw_group  }} v3 priv context vlan- match prefix
+        - snmp-server view {{ snmp_ro_view }} internet included
+        - snmp-server group {{ snmp_ro_group }} v3 priv read {{ snmp_ro_view }}
+        - snmp-server user {{  snmp_ro_user  }} {{ snmp_ro_group }} v3 auth sha {{ snmp_auth_passphrase_ro }} priv aes 128 {{ snmp_priv_passphrase_ro }}
+        - snmp-server group {{ snmp_ro_group }} v3 priv context vlan- match prefix
+        before:
+        - no snmp-server location
+        - no snmp-server view {{ snmp_rw_view  }} internet included
+        - no snmp-server view {{ snmp_ro_view }} internet included
+        - no snmp-server group {{ snmp_ro_group }} v3 priv
+        - no snmp-server group {{ snmp_ro_group }} v3 auth
+        - no snmp-server user {{  snmp_ro_user  }} {{ snmp_ro_group }} v3 priv
+        - no snmp-server user {{  snmp_ro_user  }} {{ snmp_ro_group }} v3 auth
+        match: strict
+        replace: block   

@@ -1,0 +1,11 @@
+---
+galaxy_info:
+  license: MIT
+  min_ansible_version: "1.00"
+  role_name: ios_snmp
+  author: Chad Aiena
+  description: Ansible Role adds snmpv3 to a Cisco IOS/IOS-XE device
+  company: Sapphire Health
+# collections: []
+# dependencies: []
+...

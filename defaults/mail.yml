@@ -1,0 +1,17 @@
+---  
+netbox_url: "https://netbox.example.com"
+netbox_token: "your_token_here"
+netbox_validate_certs: false
+snmp_rw_view: "RWview"
+snmp_rw_group: "RWgroup"
+snmp_ro_group: "ROgroup"
+snmp_ro_view: "ROview"
+snmp_rw_user: "RWuser"
+snmp_ro_user: "ROuser"
+snmp_auth_passphrase_rw: "Password"
+snmp_priv_passphrase_rw: "Password"
+snmp_auth_passphrase_ro: "Password"
+snmp_priv_passphrase_ro: "Password"
+snmp_acl_name: "MANAGEMENT"
+
+
